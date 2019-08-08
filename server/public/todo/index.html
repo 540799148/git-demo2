@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Todo List</title>
+	<link rel="stylesheet" href="assets/css/base.css">
+	<link rel="stylesheet" href="assets/css/index.css">
+</head>
+
+<body>
+	<section class="todoapp">
+		<header class="header">
+			<h1>todos</h1>
+			<input id="inputTodo" class="new-todo" placeholder="What needs to be done?" autofocus>
+		</header>
+		<!-- This section should be hidden by default and shown when there are todos -->
+		<section class="main">
+			<input class="toggle-all" type="checkbox">
+			<label for="toggle-all">Mark all as complete</label>
+			<ul class="todo-list" id="todo-list">
+				<!-- These are here just to show the structure of the list items -->
+				<!-- List items should get the class `editing` when editing and `completed` when marked as completed -->
+				<!-- <li class="completed">
+					<div class="view">
+						<input class="toggle" type="checkbox" checked>
+						<label>Taste JavaScript</label>
+						<button class="destroy"></button>
+					</div>
+					<input class="edit" value="Create a TodoMVC template">
+				</li>
+				<li>
+					<div class="view">
+						<input class="toggle" type="checkbox">
+						<label>Buy a unicorn</label>
+						<button class="destroy"></button>
+					</div>
+					<input class="edit" value="Rule the web">
+				</li> -->
+			</ul>
+		</section>
+		<!-- This footer should hidden by default and shown when there are todos -->
+		<footer class="footer">
+			<!-- This should be `0 items left` by default -->
+			<span class="todo-count"><strong id="count">0</strong> item left</span>
+			<!-- Remove this if you don't implement routing -->
+			<ul class="filters">
+				<li>
+					<a class="selected" href="#/">All</a>
+				</li>
+				<li>
+					<a href="#/active">Active</a>
+				</li>
+				<li>
+					<a href="#/completed">Completed</a>
+				</li>
+			</ul>
+			<!-- Hidden if no completed items are left ↓ -->
+			<button class="clear-completed">Clear completed</button>
+		</footer>
+	</section>
+	<script src="/js/jquery.min.js"></script>
+	<script src="/js/template-web.js"></script>
+	<script src="/js/nprogress/nprogress.js"></script>
+	<!-- 任务列表模板 -->
+	<script type="text/html" id="tpl">
+		{{each tasks}}
+		<li class="{{$value.completed?'completed':''}}">
+			<div class="view">
+				<input class="toggle" type="checkbox" {{$value.completed ? 'checked' : ''}}>
+				<label>{{$value.title}}</label>
+				<button class="destroy" data-id="{{$value._id}}"></button>
+			</div>
+			<input class="edit">
+		</li>
+		{{/each}}
+	</script>
+	<script>
+		var taskAry = [];
+		var taskBox = $("#todo-list");
+		var strong=document.querySelector("span strong");
+		console.log(strong);
+		
+		// var strong=$("#count");
+		$.ajax({
+			url: '/todo/task',
+			type: 'get',
+			success: function (res) {
+				taskAry = res;
+				console.log(res);
+				render();
+			}
+		})
+
+		function render() {
+			var str = template('tpl', {
+				tasks: taskAry
+			});
+			$("#todo-list").html(str);
+		}
+		var task = $("#inputTodo");
+		//键盘输入添加事件的
+		task.on("keyup", function (e) {
+			// console.log("ok");
+			var taskName = $(this).val();
+			if (e.keyCode == 13) {
+				//如果没有输入内容 跳出
+				if (task.val().trim().length == 0) {
+					alert('请填写内容');
+					task.val('');
+					return;
+				}
+				//如果有重复的内容
+				if (taskAry.find(function (item) {
+						return item.title == taskName
+					})) //箭头函数不写大括号自带return
+				// if(taskAry.find(item=>item.title==taskName))
+				{
+					alert('任务重复了');
+					task.val('');
+					return;
+				}
+				console.log(taskName);
+				$.ajax({
+					type: 'post',
+					url: '/todo/addTask',
+					contentType: 'application/json',
+					data: JSON.stringify({
+						title: taskName
+					}),
+					success: function (res) {
+						taskAry.push(res);
+						render();
+						task.val('');
+					}
+				})
+
+
+			}
+		})
+
+		//实现删除功能
+		taskBox.on('click', '.destroy', function () {
+			var id = $(this).attr('data-id');
+			console.log(id);
+
+			$.get({
+				type: 'get',
+				url: '/todo/deleteTask',
+				data: {
+					_id: id
+				},
+				success: function (res) {
+					var index = taskAry.findIndex(item => item._id == res._id);
+					taskAry.splice(index, 1);
+					render();
+				}
+			})
+
+		});
+		//当用户改变人物名称前面的复选框状态时触发
+		taskBox.on('change', '.toggle', function () {
+			const status = $(this).is(':checked');
+			// console.log(status)//复选框选中的状态
+			//获取当前任务的id
+			const id = $(this).siblings('button').attr('data-id');
+			console.log(id);
+
+			//向服务器发送请求 更改任务状态
+			$.ajax({
+				type: 'post',
+				url: '/todo/modifyTask',
+				data: JSON.stringify({
+					_id: id,
+					completed: status
+				}),
+				contentType: 'application/json',
+				success: function (response) {
+					var task = taskAry.find(item => item._id == id);
+					task.completed = response.completed;
+					render();
+					//计算未完成任务数量
+					calcCount();
+				}
+			})
+		});
+		
+		//当双击事件名称的时候触发
+		taskBox.on('dblclick','label',function(){
+			// console.log('ok');
+			//让任务处于编辑状态
+			$(this).parent().parent().addClass('editing');
+			$(this).parent().siblings('input').val($(this).text());
+			// console.log($(this).text());
+			//让文本框获得焦点
+			$(this).parent().siblings('input').focus();
+		})
+		
+		//当文本框失去焦点的时候
+		taskBox.on('blur','.edit',function(){
+			//最新的任务名称
+			var newTaskName=$(this).val();
+			//编辑任务的id
+			var id=$(this).siblings().find('button').attr('data-id');
+			$.ajax({
+				url:'/todo/modifyTask',
+				type:'post',
+				data:JSON.stringify({_id:id,title:newTaskName}),
+				success:function(response){
+					// var task = taskAry.find(item => item._id == id);
+					var task =taskAry.find(function(item){
+						return item._id==id
+					})
+					console.log(task);
+					//修改任务名称
+					task.title=response.title;
+					render();
+					calcCount();
+				}
+			})
+		});
+		//用于计算未完成任务的数量
+		function calcCount(){
+			var count =0;
+			//将未完成的任务过滤到一个新的数组中
+			var newAey=taskAry.filter(item => item.completed== false);
+			//将新数组的长度赋值给count
+			count=newAey.length;
+			$(strong).text(count);
+		}
+	</script>
+
+</body>
+
+</html>

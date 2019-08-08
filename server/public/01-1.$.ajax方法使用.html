@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>$.ajax方法基本使用</title>
+</head>
+<body>
+    用户名:<input type="text" name="username" id="user"> 
+      密码:  <input type="password" name="password" id="psd">
+      发送: <button id="btn">提交</button>
+    <script src="/js/jquery.min.js"></script>
+    
+	<script>
+		$('#btn').on('click', function () {
+			$.ajax({
+				// 请求方式
+				type: 'post',
+				// 请求地址
+                url: '/btn',
+                // data:
+                //     `username=$("#user").val()&password=$("#psd").val()`
+                // ,
+                data:{
+                    username:$("#user").val(),
+                    password:$("#psd").val()
+                },
+				// 请求成功以后函数被调用
+				success: function (response) {
+					// response为服务器端返回的数据
+                    // 方法内部会自动将json字符串转换为json对象
+                    //这里的response 与 服务器端的req.body 是一个东西
+					console.log(response);
+				},
+				// 请求失败以后函数被调用
+				error: function (xhr) {
+					console.log(xhr)
+				}
+			})
+		});
+	</script>
+</body>
+</html>
