@@ -80,7 +80,7 @@ var userId;
 //编辑用户功能
 $('tbody').on('click', '.edit', function () {
 
-    userId=$(this).parent().attr('data-id');
+    userId = $(this).parent().attr('data-id');
     //点击修改按钮 --> 添加变修改
     $("#userAdd").hide();
     $("#userEdit").show();
@@ -129,4 +129,87 @@ $('#userEdit').on('click', function () {
             render(userArr);
         }
     })
+});
+
+//完成用户删除功能 
+$('tbody').on('click', '.del', function () {
+    // console.log('ok');
+    if (window.confirm('真的要删除吗?')) {
+        var id = $(this).parent().attr('data-id');
+        console.log(id);
+
+        $.ajax({
+            type: 'delete',
+            url: '/users/' + id,
+            success: function (res) {
+
+                var index = userArr.findIndex(item => item._id == userId);
+                userArr.splice(index, 1);
+                render(userArr);
+            }
+        })
+    }
+
+});
+
+//获取全选按钮
+// $('tbody')
+$('thead input').on('click', function () {
+    //prop()括号里一个参数是获取  两个参数是赋值
+    let flag = $(this).prop('checked');
+    $('tbody input').prop('checked', flag);
+
+    if(flag){
+        $('.btn-sm').show(); 
+    }else{
+        $('.btn-sm').hide();
+    }
+})
+
+//check 框点击事件
+$('tbody').on('click', 'input', function () {
+    //单选选中个数==单选框个数  表示全部都选了 全选框选中
+    if ($('tbody input').length == $('tbody input:checked').length) {
+        $('thead input').prop('checked', true);
+    } else {
+        $('tbody thead input').prop('checked', false);
+    }
+
+    //个数大于1 显示批量删除按钮
+    if ($('tbody input:checked').length > 1) {
+        $('.btn-sm').show();
+    } else {
+        $('.btn-sm').hide();
+    }
+    // console.log($(' input:checked').length);
+
+});
+
+//给批量删除注册点击事件
+$('.btn-sm').on('click',function(){
+    // console.log('ok');
+    var ids=[];
+    
+    var checkUser=$('tbody input:checked');
+    checkUser.each(function(k,v){
+        var id = v.parentNode.parentNode.children[6].getAttribute('data-id');
+        ids.push(id);
+        console.log(id);
+    });
+
+    $.ajax({
+        type:'delete',
+        url: '/users/' + ids.join('-'),
+        success:function(res){
+
+            // location.reload();//1.重新加载页面
+            //第2中方法下面是局部刷新页面
+            res.forEach(e=>{
+                var index=userArr.findIndex(item._id==e.id);
+                userArr.splice(index,1);
+                render(userArr);
+            })
+        }
+    })
+
 })
